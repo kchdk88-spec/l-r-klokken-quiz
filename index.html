@@ -733,6 +733,20 @@ nextQuestion();
 drawLaerClock();
 laerUpdate();
 // Init SVG colors
+function updateSVGColors() {
+  const c = { face: '#f8f0ff', stroke: '#ffc040', hour: '#ffc040', min: '#7b2fbf', dot: '#ffc040', dot2: '#7b2fbf', nums: '#080820' };
+  document.querySelectorAll('[id="clock-face-circle"]').forEach(el => { el.setAttribute('fill', c.face); el.setAttribute('stroke', c.stroke); });
+  document.querySelectorAll('#hour-hand, #qhour-hand, #laer-hour-hand').forEach(el => { el.setAttribute('stroke', c.hour); el.setAttribute('stroke-width', '8'); });
+  document.querySelectorAll('#min-hand, #qmin-hand, #laer-min-hand').forEach(el => { el.setAttribute('stroke', c.min); el.setAttribute('stroke-width', '3'); });
+  document.querySelectorAll('#center-dot').forEach(el => el.setAttribute('fill', c.dot));
+  document.querySelectorAll('#center-dot2').forEach(el => el.setAttribute('fill', c.dot2));
+  document.querySelectorAll('#hour-numbers text, #qhour-numbers text, #laer-hour-numbers text').forEach(el => el.setAttribute('fill', c.nums));
+  document.querySelectorAll('#hour-marks line, #qhour-marks line, #laer-hour-marks line').forEach(el => el.setAttribute('stroke', '#ffc040'));
+  document.querySelectorAll('#min-marks line, #qmin-marks line, #laer-min-marks line').forEach(el => el.setAttribute('stroke', '#6050a8'));
+}
+
+drawLaerClock();
+laerUpdate();
 setTimeout(updateSVGColors, 50);
 </script>
 </body>
