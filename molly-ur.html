@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lær klokken</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Nunito+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #eef1ff;
+      --bg2: #ffffff;
+      --bg3: #dde3ff;
+      --border: #8890cc;
+      --accent: #2828b0;
+      --star: #2828b0;
+      --text: #080820;
+      --text-dim: #202060;
+      --text-muted: #1a1a66;
+      --correct: #087040;
+      --wrong: #a01020;
+      --min-hand: #ffc040;
+      --hour-hand: #7b2fbf;
+      --clock-face: #ffffff;
+      --clock-stroke: #e06800;
+      --clock-nums: #080820;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 1.5rem 1rem 4rem;
+
+    }
+
+    .header { text-align: center; margin-bottom: 1.5rem; }
+    .header h1 { font-size: 26px; font-weight: 800; color: var(--star); letter-spacing: -0.02em; }
+    .header p { font-size: 14px; color: var(--text-dim); margin-top: 4px; }
+
+    /* Tab navigation */
+    .tabs { display: flex; gap: 8px; margin-bottom: 1.5rem; justify-content: center; }
+    .tab { padding: 8px 18px; border-radius: 20px; border: 1.5px solid var(--border); background: transparent; color: var(--text-dim); font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+    .tab.active { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+
+    /* Panels */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* Clock container */
+    .clock-wrap { display: flex; flex-direction: column; align-items: center; gap: 1.2rem; }
+
+    /* SVG Clock */
+    .clock-svg-wrap { position: relative; width: 240px; height: 240px; cursor: grab; }
+    .clock-svg-wrap:active { cursor: grabbing; }
+    #clock-svg { width: 240px; height: 240px; filter: drop-shadow(0 8px 24px rgba(245,166,35,0.3)); }
+
+    /* Time display */
+    .time-display { text-align: center; }
+    .digital-time { font-size: 42px; font-weight: 800; color: var(--accent); letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+    .danish-time { font-size: 20px; font-weight: 700; color: var(--text) !important; margin-top: 4px; min-height: 28px; }
+    .danish-sub { font-size: 13px; color: var(--text-dim); margin-top: 2px; min-height: 18px; }
+
+    /* Drag hint */
+    .drag-hint { font-size: 13px; color: var(--text-muted); text-align: center; }
+
+    /* Quiz panel */
+    .quiz-card { background: var(--bg2); border: 1.5px solid var(--border); border-radius: 20px; padding: 20px; }
+    .quiz-prompt { font-size: 16px; font-weight: 700; color: var(--text); text-align: center; margin-bottom: 16px; min-height: 48px; line-height: 1.4; }
+    .quiz-clock-wrap { display: flex; justify-content: center; margin-bottom: 16px; }
+    .quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .quiz-opt { padding: 12px 10px; border-radius: 14px; border: 1.5px solid var(--border); background: var(--bg3); color: var(--text); font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; text-align: center; transition: all 0.15s; line-height: 1.3; }
+    .quiz-opt:hover { border-color: var(--accent); color: var(--accent); }
+    .quiz-opt.correct { background: rgba(76,219,138,0.15); border-color: var(--correct); color: var(--correct); }
+    .quiz-opt.wrong { background: rgba(255,95,122,0.15); border-color: var(--wrong); color: var(--wrong); }
+    .quiz-opt:disabled { cursor: default; }
+    .quiz-feedback { text-align: center; font-size: 16px; font-weight: 800; min-height: 28px; margin-bottom: 12px; }
+    .quiz-feedback.correct { color: var(--correct); }
+    .quiz-feedback.wrong { color: var(--wrong); }
+    .next-btn { width: 100%; padding: 12px; border-radius: 14px; background: var(--accent); border: none; color: #ffffff; font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 800; cursor: pointer; display: none; }
+    .next-btn.show { display: block; }
+
+    /* Score */
+    .score-row { display: flex; justify-content: center; gap: 20px; margin-bottom: 16px; }
+    .score-item { text-align: center; }
+    .score-num { font-size: 24px; font-weight: 800; }
+    .score-num.correct { color: var(--correct); }
+    .score-num.wrong { color: var(--wrong); }
+    .score-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+    /* Stars */
+    .stars { font-size: 22px; text-align: center; margin-bottom: 8px; min-height: 28px; }
+    .level-row { display: flex; gap: 8px; margin-bottom: 14px; }
+    .level-btn { flex: 1; padding: 8px 6px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--bg3); color: var(--text-dim); font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; text-align: center; line-height: 1.3; display: flex; flex-direction: column; align-items: center; gap: 2px; transition: all 0.2s; }
+    .level-btn span { font-size: 10px; font-weight: 400; color: var(--text-muted); }
+    .level-btn.active { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+    .level-btn.active span { color: #dde3ff; }
+
+    /* Lær modul */
+    .laer-card { background: var(--bg2); border: 1.5px solid var(--border); border-radius: 20px; padding: 20px; margin-bottom: 12px; }
+    .laer-title { font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+    .laer-desc { font-size: 14px; color: var(--text-dim); margin-bottom: 16px; line-height: 1.6; }
+    .laer-clock-wrap { display: flex; justify-content: center; margin-bottom: 14px; }
+    .laer-time { text-align: center; margin-bottom: 14px; }
+    .laer-digital { font-size: 32px; font-weight: 800; color: var(--accent); }
+    .laer-danish { font-size: 18px; font-weight: 700; color: var(--text); margin-top: 4px; }
+    .laer-nav { display: flex; gap: 10px; }
+    .laer-btn { flex: 1; padding: 10px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--bg3); color: var(--text); font-family: Nunito, sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; }
+    .laer-btn.primary { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+    .laer-chapter-nav { display: flex; gap: 6px; justify-content: center; margin-bottom: 16px; }
+    .chapter-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--bg3); border: 1.5px solid var(--border); cursor: pointer; transition: all 0.2s; }
+    .chapter-dot.active { background: var(--accent); border-color: var(--accent); }
+    .laer-mini-quiz { background: var(--bg3); border-radius: 14px; padding: 14px; margin-top: 12px; }
+    .laer-mini-title { font-size: 13px; font-weight: 800; color: var(--text-dim); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .laer-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .laer-opt { padding: 10px 8px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--bg2); color: var(--text); font-family: Nunito, sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; text-align: center; }
+    .laer-opt.correct { background: rgba(8,112,64,0.15); border-color: var(--correct); color: var(--correct); }
+    .laer-opt.wrong { background: rgba(160,16,32,0.15); border-color: var(--wrong); color: var(--wrong); }
+    .laer-feedback { text-align: center; font-size: 14px; font-weight: 800; min-height: 22px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+
+<div style="max-width:420px; margin:0 auto;">
+  <div class="header">
+<h1>⏰ Lær klokken</h1>
+    <p>Drej viserne — lær hvad klokken hedder</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('laer')">📖 Lær</button>
+    <button class="tab" onclick="switchTab('udforsk')">🕐 Udforsk</button>
+    <button class="tab" onclick="switchTab('quiz')">🎯 Quiz</button>
+  </div>
+
+  <!-- LÆR PANEL -->
+  <div class="panel active" id="panel-laer">
+    <div class="laer-chapter-nav" id="chapter-dots"></div>
+    <div class="laer-card">
+      <div class="laer-title" id="laer-title"></div>
+      <div class="laer-desc" id="laer-desc"></div>
+      <div class="laer-clock-wrap">
+        <svg id="laer-clock-svg" viewBox="0 0 200 200" width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <clipPath id="laer-clip"><circle cx="100" cy="100" r="93"/></clipPath>
+          </defs>
+          <circle cx="100" cy="100" r="95" fill="#f8f0ff" stroke="#ffc040" stroke-width="3"/>
+          <g id="laer-overlay"></g>
+          <g id="laer-hour-marks"></g>
+          <g id="laer-hour-numbers"></g>
+          <g id="laer-min-marks"></g>
+          <line id="laer-hour-hand" x1="100" y1="100" x2="100" y2="52" stroke="#ffc040" stroke-width="7" stroke-linecap="round"/>
+          <line id="laer-min-hand" x1="100" y1="100" x2="100" y2="30" stroke="#7b2fbf" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="100" cy="100" r="5" fill="#ffc040"/>
+          <circle cx="100" cy="100" r="2.5" fill="#7b2fbf"/>
+        </svg>
+      </div>
+      <div class="laer-time">
+        <div class="laer-digital" id="laer-digital"></div>
+        <div class="laer-danish" id="laer-danish"></div>
+      </div>
+      <div class="laer-mini-quiz" id="laer-mini-quiz" style="display:none">
+        <div class="laer-mini-title">🎯 Prøv selv</div>
+        <div id="laer-mini-prompt" style="font-size:14px;color:var(--text);font-weight:700;margin-bottom:10px;"></div>
+        <div class="laer-opts" id="laer-mini-opts"></div>
+        <div class="laer-feedback" id="laer-mini-feedback"></div>
+      </div>
+      <div class="laer-nav" style="margin-top:14px">
+        <button class="laer-btn" id="laer-prev" onclick="laerNav(-1)">← Tilbage</button>
+        <button class="laer-btn" id="laer-step-prev" onclick="laerStepNav(-1)">‹ Forrige</button>
+        <button class="laer-btn primary" id="laer-step-next" onclick="laerStepNav(1)">Næste ›</button>
+        <button class="laer-btn primary" id="laer-next" onclick="laerNav(1)" style="display:none">Videre →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- UDFORSK PANEL -->
+  <div class="panel" id="panel-udforsk">
+    <div class="clock-wrap">
+      <div class="clock-svg-wrap" id="clock-drag-wrap">
+        <svg id="clock-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <!-- Face -->
+          <circle cx="100" cy="100" r="95" fill="#f8f0ff" stroke="#ffc040" id="clock-face-circle" id="clock-face-circle" stroke-width="3"/>
+          <!-- Hour marks -->
+          <g id="hour-marks"></g>
+          <!-- Numbers -->
+          <g id="hour-numbers"></g>
+          <!-- Minute marks -->
+          <g id="min-marks"></g>
+          <!-- Hands -->
+          <line id="hour-hand" x1="100" y1="100" x2="100" y2="45" stroke="#ffc040" stroke-width="7" stroke-linecap="round" id="hhand-stroke"/>
+          <line id="min-hand" x1="100" y1="100" x2="100" y2="28" stroke="#7b2fbf" stroke-width="3" stroke-linecap="round"/>
+          <!-- Center dot -->
+          <circle cx="100" cy="100" r="5" fill="#ffffff" id="center-dot"/>
+          <circle cx="100" cy="100" r="2.5" fill="#ffc040" id="center-dot2"/>
+        </svg>
+      </div>
+      <div class="time-display">
+        <div class="digital-time" id="digital-display">12:00</div>
+        <div class="danish-time" id="danish-display">Klokken er tolv</div>
+        <div class="danish-sub" id="danish-sub"></div>
+      </div>
+      <div class="drag-hint">👆 Træk minutviseren (lilla) rundt</div>
+    </div>
+  </div>
+
+  <!-- QUIZ PANEL -->
+  <div class="panel" id="panel-quiz">
+    <div class="score-row">
+      <div class="score-item"><div class="score-num correct" id="q-correct">0</div><div class="score-label">Rigtige</div></div>
+      <div class="score-item"><div class="score-num wrong" id="q-wrong">0</div><div class="score-label">Forkerte</div></div>
+    </div>
+    <div class="stars" id="stars"></div>
+    <div class="quiz-card">
+      <div class="quiz-prompt" id="quiz-prompt">Hvad viser uret?</div>
+      <div class="quiz-clock-wrap">
+        <svg id="quiz-clock-svg" viewBox="0 0 200 200" width="180" height="180" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="100" cy="100" r="95" fill="#f8f0ff" stroke="#ffc040" stroke-width="3"/>
+          <g id="qhour-marks"></g>
+          <g id="qhour-numbers"></g>
+          <g id="qmin-marks"></g>
+          <line id="qhour-hand" x1="100" y1="100" x2="100" y2="45" stroke="#ffc040" stroke-width="7" stroke-linecap="round" id="hhand-stroke"/>
+          <line id="qmin-hand" x1="100" y1="100" x2="100" y2="28" stroke="#7b2fbf" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="100" cy="100" r="5" fill="#ffffff"/>
+          <circle cx="100" cy="100" r="2.5" fill="#ffc040"/>
+        </svg>
+      </div>
+      <div class="quiz-options" id="quiz-options"></div>
+      <div class="quiz-feedback" id="quiz-feedback"></div>
+      <button class="next-btn" id="next-btn" onclick="nextQuestion()">Næste spørgsmål →</button>
+    </div>
+
+    <div style="margin-top:14px">
+      <div class="section-label" style="margin-bottom:8px;text-align:center;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim)">Vælg niveau</div>
+      <div class="level-row">
+        <button class="level-btn active" id="lvl1" onclick="setLevel(1)">Niveau 1<span>Hele · Halve · Kvarter</span></button>
+        <button class="level-btn" id="lvl2" onclick="setLevel(2)">Niveau 2<span>5-minutters</span></button>
+        <button class="level-btn" id="lvl3" onclick="setLevel(3)">Niveau 3<span>Alle minutter</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+
+// ---- CLOCK DRAWING ----
+function drawClockDecorations(svgId, hmId, hnId, mmId) {
+  const hm = document.getElementById(hmId);
+  const hn = document.getElementById(hnId);
+  const mm = document.getElementById(mmId);
+  const nums = [12,1,2,3,4,5,6,7,8,9,10,11];
+  nums.forEach((n, i) => {
+    const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
+    const r = 78, cx = 100 + r * Math.cos(angle), cy = 100 + r * Math.sin(angle);
+    const text = document.createElementNS("http://www.w3.org/2000/svg","text");
+    text.setAttribute("x", cx); text.setAttribute("y", cy + 5);
+    text.setAttribute("text-anchor","middle");
+    text.setAttribute("font-size","13"); text.setAttribute("font-weight","700");
+    text.setAttribute("font-family","Nunito, sans-serif");
+    text.setAttribute("fill","#2a1060");
+    text.textContent = n;
+    hn.appendChild(text);
+    // Hour tick
+    const r1=88, r2=93;
+    const line = document.createElementNS("http://www.w3.org/2000/svg","line");
+    line.setAttribute("x1",100+r1*Math.cos(angle)); line.setAttribute("y1",100+r1*Math.sin(angle));
+    line.setAttribute("x2",100+r2*Math.cos(angle)); line.setAttribute("y2",100+r2*Math.sin(angle));
+    line.setAttribute("stroke","#c0a060"); line.setAttribute("stroke-width","2");
+    hm.appendChild(line);
+  });
+  // Minute ticks
+  for(let i=0;i<60;i++){
+    if(i%5===0) continue;
+    const angle=(i/60)*Math.PI*2-Math.PI/2;
+    const r1=90,r2=93;
+    const line=document.createElementNS("http://www.w3.org/2000/svg","line");
+    line.setAttribute("x1",100+r1*Math.cos(angle)); line.setAttribute("y1",100+r1*Math.sin(angle));
+    line.setAttribute("x2",100+r2*Math.cos(angle)); line.setAttribute("y2",100+r2*Math.sin(angle));
+    line.setAttribute("stroke","#d0c0a0"); line.setAttribute("stroke-width","1");
+    mm.appendChild(line);
+  }
+}
+
+drawClockDecorations("clock-svg","hour-marks","hour-numbers","min-marks");
+drawClockDecorations("quiz-clock-svg","qhour-marks","qhour-numbers","qmin-marks");
+
+// ---- TIME LOGIC ----
+const DANISH_HOURS = ["tolv","et","to","tre","fire","fem","seks","syv","otte","ni","ti","elleve","tolv"];
+const DANISH_HOURS_OVER = ["tolv","et","to","tre","fire","fem","seks","syv","otte","ni","ti","elleve","tolv"];
+
+function getAllDanishTimes(h, m) {
+  // Returnerer array med alle gyldige danske betegnelser
+  const h12 = h % 12;
+  const nextH = (h12 + 1) % 13 === 0 ? 1 : (h12 + 1) % 13;
+  const hName = DANISH_HOURS[h12];
+  const nextHName = DANISH_HOURS[nextH === 0 ? 12 : nextH];
+
+  if (m === 0)  return [`Klokken er ${hName}`];
+  if (m === 5)  return [`Fem minutter over ${hName}`, `5 minutter over ${hName}`];
+  if (m === 10) return [`Ti minutter over ${hName}`, `10 minutter over ${hName}`];
+  if (m === 15) return [`Kvart over ${hName}`];
+  if (m === 20) return [`Ti minutter i halv ${nextHName}`, `20 minutter i ${nextHName}`];
+  if (m === 25) return [`Fem minutter i halv ${nextHName}`, `25 minutter i ${nextHName}`];
+  if (m === 30) return [`Halv ${nextHName}`];
+  if (m === 35) return [`Fem minutter over halv ${nextHName}`, `25 minutter i ${nextHName}`];
+  if (m === 40) return [`Ti minutter over halv ${nextHName}`, `20 minutter i ${nextHName}`];
+  if (m === 45) return [`Kvart i ${nextHName}`];
+  if (m === 50) return [`Ti minutter i ${nextHName}`, `10 minutter i ${nextHName}`];
+  if (m === 55) return [`Fem minutter i ${nextHName}`, `5 minutter i ${nextHName}`];
+
+  if (m < 30) return [`${m} minutter over ${hName}`];
+  return [`${60-m} minutter i ${nextHName}`];
+}
+
+function getDanishTime(h, m) {
+  // Returnerer primær betegnelse + sub — bagudkompatibel
+  const all = getAllDanishTimes(h, m);
+  const h12 = h % 12;
+  const sub = m === 0 ? `${String(h).padStart(2,'0')}:00` : '';
+  const extra = all.length > 1 ? `<br><span style="font-size:13px;opacity:0.7">også: ${all.slice(1).join(', ')}</span>` : '';
+  return { main: all[0], sub, extra, all };
+}
+
+function updateHands(hEl, mEl, h, m) {
+  const mAngle = (m / 60) * 360;
+  const hAngle = ((h % 12) / 12) * 360 + (m / 60) * 30;
+  const mRad = (mAngle - 90) * Math.PI / 180;
+  const hRad = (hAngle - 90) * Math.PI / 180;
+  const mLen = 65, hLen = 48;
+  mEl.setAttribute("x2", 100 + mLen * Math.cos(mRad));
+  mEl.setAttribute("y2", 100 + mLen * Math.sin(mRad));
+  hEl.setAttribute("x2", 100 + hLen * Math.cos(hRad));
+  hEl.setAttribute("y2", 100 + hLen * Math.sin(hRad));
+}
+
+
+// ---- LÆR MODUL ----
+const CHAPTERS = [
+  {
+    title: "1. Hele timer",
+    desc: "Når minutviseren (lilla) peger lige op mod 12, er klokken præcis. Tryk næste for at se timerne.",
+    steps: [
+      {h:6,m:0},{h:7,m:0},{h:8,m:0},{h:9,m:0},{h:10,m:0},{h:11,m:0},
+      {h:12,m:0},{h:13,m:0},{h:14,m:0},{h:15,m:0},{h:16,m:0},{h:17,m:0},
+      {h:18,m:0},{h:19,m:0},{h:20,m:0},{h:21,m:0},{h:22,m:0},{h:23,m:0}
+    ],
+    overlay: (h,m) => '',
+    quiz: { prompt: "Hvad hedder denne tid?", gen: () => {
+      const h = 6 + Math.floor(Math.random()*18);
+      return { h, m:0, correct: getDanishTime(h,0).main };
+    }}
+  },
+  {
+    title: "2. Halve timer",
+    desc: "Halvvejs rundt er 'halv'. Halv tre betyder halvvejs på vej til tre — minutviseren peger ned mod 6.",
+    steps: [
+      {h:6,m:30},{h:7,m:30},{h:8,m:30},{h:9,m:30},{h:10,m:30},{h:11,m:30},
+      {h:12,m:30},{h:13,m:30},{h:14,m:30},{h:15,m:30},{h:16,m:30},{h:17,m:30}
+    ],
+    overlay: (h,m) => {
+      // Blå halvcirkel - nedre halvdel
+      return `<path d="M100,100 L100,7 A93,93 0 0,1 100,193 Z" fill="rgba(40,120,200,0.18)" clip-path="url(#laer-clip)"/>
+              <path d="M7,100 A93,93 0 0,0 193,100" fill="none" stroke="rgba(40,120,200,0.5)" stroke-width="2" stroke-dasharray="4,3"/>`;
+    },
+    quiz: { prompt: "Hvad hedder denne tid?", gen: () => {
+      const h = 6 + Math.floor(Math.random()*12);
+      return { h, m:30, correct: getDanishTime(h,30).main };
+    }}
+  },
+  {
+    title: "3. Kvart over",
+    desc: "En fjerdedel af vejen rundt. Fra 12 til 3 — minutviseren peger mod højre.",
+    steps: [
+      {h:6,m:15},{h:8,m:15},{h:10,m:15},{h:12,m:15},{h:14,m:15},{h:16,m:15},{h:18,m:15}
+    ],
+    overlay: (h,m) => {
+      return `<path d="M100,100 L100,7 A93,93 0 0,1 193,100 Z" fill="rgba(50,180,100,0.22)" clip-path="url(#laer-clip)"/>`;
+    },
+    quiz: { prompt: "Hvad hedder denne tid?", gen: () => {
+      const h = 6 + Math.floor(Math.random()*12);
+      return { h, m:15, correct: getDanishTime(h,15).main };
+    }}
+  },
+  {
+    title: "4. Kvart i",
+    desc: "Tre fjerdedele rundt. Fra 12 til 9 — der mangler kun et kvarter til næste time.",
+    steps: [
+      {h:7,m:45},{h:9,m:45},{h:11,m:45},{h:13,m:45},{h:15,m:45},{h:17,m:45},{h:19,m:45}
+    ],
+    overlay: (h,m) => {
+      return `<path d="M100,100 L100,7 A93,93 0 1,1 7,100 Z" fill="rgba(120,50,180,0.18)" clip-path="url(#laer-clip)"/>`;
+    },
+    quiz: { prompt: "Hvad hedder denne tid?", gen: () => {
+      const h = 7 + Math.floor(Math.random()*12);
+      return { h, m:45, correct: getDanishTime(h,45).main };
+    }}
+  },
+  {
+    title: "5. Fem-minutters spring",
+    desc: "Hvert tal på uret er 5 minutter. Tryk næste for at se dem lyse op én ad gangen.",
+    steps: [
+      {h:12,m:0},{h:12,m:5},{h:12,m:10},{h:12,m:15},{h:12,m:20},{h:12,m:25},
+      {h:12,m:30},{h:12,m:35},{h:12,m:40},{h:12,m:45},{h:12,m:50},{h:12,m:55}
+    ],
+    overlay: (h,m) => {
+      if (m === 0) return '';
+      // Fremhæv aktuel position
+      const angle = (m/60)*Math.PI*2 - Math.PI/2;
+      const r = 78;
+      const cx = 100 + r*Math.cos(angle);
+      const cy = 100 + r*Math.sin(angle);
+      // Bue fra 12 til minutposition
+      const large = m > 30 ? 1 : 0;
+      const ex = 100 + 93*Math.cos(angle);
+      const ey = 100 + 93*Math.sin(angle);
+      return `<path d="M100,7 A93,93 0 ${large},1 ${ex},${ey}" fill="none" stroke="rgba(255,150,0,0.6)" stroke-width="8" stroke-linecap="round" clip-path="url(#laer-clip)"/>
+              <circle cx="${cx}" cy="${cy}" r="14" fill="rgba(255,150,0,0.25)"/>`;
+    },
+    quiz: { prompt: "Hvad viser uret?", gen: () => {
+      const mins = [5,10,15,20,25,30,35,40,45,50,55];
+      const m = mins[Math.floor(Math.random()*mins.length)];
+      const h = 10 + Math.floor(Math.random()*8);
+      return { h, m, correct: getDanishTime(h,m).main };
+    }}
+  }
+];
+
+let laerChapter = 0, laerStep = 0, laerQuizDone = false;
+
+function drawLaerClock() {
+  drawClockDecorations("laer-clock-svg","laer-hour-marks","laer-hour-numbers","laer-min-marks");
+}
+
+function laerUpdate() {
+  const ch = CHAPTERS[laerChapter];
+  const step = ch.steps[laerStep];
+  document.getElementById('laer-title').textContent = ch.title;
+  document.getElementById('laer-desc').textContent = ch.desc;
+
+  // Hands
+  updateHands(
+    document.getElementById('laer-hour-hand'),
+    document.getElementById('laer-min-hand'),
+    step.h, step.m
+  );
+
+  // Overlay
+  document.getElementById('laer-overlay').innerHTML = ch.overlay(step.h, step.m);
+
+  // Time display
+  const dig = String(step.h).padStart(2,'0') + ':' + String(step.m).padStart(2,'0');
+  document.getElementById('laer-digital').textContent = dig;
+  const allStepTimes = getAllDanishTimes(step.h, step.m);
+  document.getElementById('laer-danish').innerHTML = allStepTimes[0] + (allStepTimes.length > 1 ? `<br><span style="font-size:14px;opacity:0.75">også: ${allStepTimes.slice(1).join(', ')}</span>` : '');
+
+  // Nav knapper
+  document.getElementById('laer-prev').style.display = laerChapter > 0 ? '' : 'none';
+  document.getElementById('laer-step-prev').style.display = laerStep > 0 ? '' : 'none';
+  const isLastStep = laerStep >= ch.steps.length - 1;
+  document.getElementById('laer-step-next').style.display = isLastStep ? 'none' : '';
+  document.getElementById('laer-next').style.display = (isLastStep && laerQuizDone) ? '' : 'none';
+
+  // Chapter dots
+  const dots = document.getElementById('chapter-dots');
+  dots.innerHTML = '';
+  CHAPTERS.forEach((c,i) => {
+    const d = document.createElement('div');
+    d.className = 'chapter-dot' + (i===laerChapter ? ' active' : '');
+    d.onclick = () => { laerChapter=i; laerStep=0; laerQuizDone=false; laerUpdate(); showLaerQuiz(); };
+    dots.appendChild(d);
+  });
+
+  // Mini quiz reset hvis nyt step
+  if (!isLastStep) {
+    document.getElementById('laer-mini-quiz').style.display = 'none';
+    laerQuizDone = false;
+  } else {
+    showLaerQuiz();
+  }
+}
+
+function laerStepNav(dir) {
+  const ch = CHAPTERS[laerChapter];
+  laerStep = Math.max(0, Math.min(ch.steps.length-1, laerStep+dir));
+  laerUpdate();
+}
+window.laerStep = laerStepNav;
+
+function laerNav(dir) {
+  laerChapter = Math.max(0, Math.min(CHAPTERS.length-1, laerChapter+dir));
+  laerStep = 0; // reset step index
+  laerQuizDone = false;
+  laerUpdate();
+}
+
+function showLaerQuiz() {
+  const ch = CHAPTERS[laerChapter];
+  const quiz = ch.quiz.gen();
+  const correct = quiz.correct;
+  document.getElementById('laer-mini-prompt').innerHTML =
+    `<span style="color:var(--accent);font-weight:800">${String(quiz.h).padStart(2,'0')}:${String(quiz.m).padStart(2,'0')}</span> — ${ch.quiz.prompt}`;
+
+  // Update clock to quiz time
+  updateHands(document.getElementById('laer-hour-hand'), document.getElementById('laer-min-hand'), quiz.h, quiz.m);
+  document.getElementById('laer-overlay').innerHTML = ch.overlay(quiz.h, quiz.m);
+  document.getElementById('laer-digital').textContent = String(quiz.h).padStart(2,'0')+':'+String(quiz.m).padStart(2,'0');
+  document.getElementById('laer-danish').textContent = '?';
+
+  // Wrong options
+  const allTimes = CHAPTERS[laerChapter].steps;
+  const wrongs = shuffle(allTimes.filter(t => getDanishTime(t.h,t.m).main !== correct)).slice(0,3);
+  const opts = shuffle([correct, ...wrongs.map(t => getDanishTime(t.h,t.m).main)]);
+
+  const container = document.getElementById('laer-mini-opts');
+  container.innerHTML = '';
+  opts.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'laer-opt';
+    btn.textContent = opt;
+    btn.onclick = () => {
+      container.querySelectorAll('.laer-opt').forEach(b => {
+        b.disabled = true;
+        if (b.textContent === correct) b.classList.add('correct');
+      });
+      const fb = document.getElementById('laer-mini-feedback');
+      const allC = getAllDanishTimes(quiz.h, quiz.m);
+      if (allC.includes(opt)) {
+        btn.classList.add('correct');
+        container.querySelectorAll('.laer-opt').forEach(b => { if (allC.includes(b.textContent)) b.classList.add('correct'); });
+        fb.textContent = '✓ Rigtigt!';
+        fb.style.color = 'var(--correct)';
+      } else {
+        btn.classList.add('wrong');
+        fb.innerHTML = '✗ Det var ' + allC[0] + (allC.length > 1 ? ` (også: ${allC.slice(1).join(', ')})` : '');
+        fb.style.color = 'var(--wrong)';
+      }
+      laerQuizDone = true;
+      document.getElementById('laer-next').style.display = '';
+      document.getElementById('laer-danish').textContent = correct;
+    };
+    container.appendChild(btn);
+  });
+
+  document.getElementById('laer-mini-feedback').textContent = '';
+  document.getElementById('laer-mini-quiz').style.display = 'block';
+}
+
+
+// ---- EXPLORE MODE ----
+let exploreH = 12, exploreM = 0;
+
+function updateExplore() {
+  updateHands(document.getElementById("hour-hand"), document.getElementById("min-hand"), exploreH, exploreM);
+  const digital = `${String(exploreH % 24).padStart(2,'0')}:${String(exploreM).padStart(2,'0')}`;
+  document.getElementById("digital-display").textContent = digital;
+  const d = getDanishTime(exploreH, exploreM);
+  document.getElementById("danish-display").textContent = d.main;
+  const allD = getAllDanishTimes(exploreH, exploreM);
+  document.getElementById("danish-sub").textContent = d.sub + (allD.length > 1 ? 'også: ' + allD.slice(1).join(', ') : '');
+}
+
+// Drag interaction
+const dragWrap = document.getElementById("clock-drag-wrap");
+let dragging = false;
+
+function getAngleFromEvent(e, el) {
+  const rect = el.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const x = (e.touches ? e.touches[0].clientX : e.clientX) - cx;
+  const y = (e.touches ? e.touches[0].clientY : e.clientY) - cy;
+  return Math.atan2(y, x) * 180 / Math.PI + 90;
+}
+
+function handleDrag(e) {
+  if (!dragging) return;
+  e.preventDefault();
+  let angle = getAngleFromEvent(e, dragWrap);
+  if (angle < 0) angle += 360;
+  const rawMin = Math.round(angle / 6);
+  exploreM = rawMin % 60;
+  updateExplore();
+}
+
+dragWrap.addEventListener("mousedown", e => { dragging = true; });
+dragWrap.addEventListener("touchstart", e => { dragging = true; }, { passive: false });
+window.addEventListener("mouseup", () => { dragging = false; });
+window.addEventListener("touchend", () => { dragging = false; });
+window.addEventListener("mousemove", handleDrag);
+window.addEventListener("touchmove", handleDrag, { passive: false });
+
+// Also allow clicking to set hour
+dragWrap.addEventListener("click", e => {
+  exploreH = (exploreH + 1) % 24;
+  updateExplore();
+});
+
+updateExplore();
+
+// ---- QUIZ MODE ----
+// Niveau 1: hele timer, halve, kvarter (06:00-00:00)
+const TIMES_L1 = [];
+for (let h = 6; h < 24; h++) {
+  [0, 15, 30, 45].forEach(m => TIMES_L1.push({h, m}));
+}
+TIMES_L1.push({h: 0, m: 0});
+
+// Niveau 2: alle 5-minutters intervaller (06:00-00:00)
+const TIMES_L2 = [];
+for (let h = 6; h < 24; h++) {
+  for (let m = 0; m < 60; m += 5) TIMES_L2.push({h, m});
+}
+TIMES_L2.push({h: 0, m: 0});
+
+// Niveau 3: alle minutter (06:00-00:00)
+const TIMES_L3 = [];
+for (let h = 6; h < 24; h++) {
+  for (let m = 0; m < 60; m++) TIMES_L3.push({h, m});
+}
+TIMES_L3.push({h: 0, m: 0});
+
+let currentLevel = 1;
+function getTimePool() {
+  if (currentLevel === 1) return TIMES_L1;
+  if (currentLevel === 2) return TIMES_L2;
+  return TIMES_L3;
+}
+
+let qCorrect = 0, qWrong = 0, qCurrent = null, qAnswered = false;
+
+function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+
+function setLevel(n) {
+  currentLevel = n;
+  qCorrect = 0; qWrong = 0;
+  document.getElementById("q-correct").textContent = 0;
+  document.getElementById("q-wrong").textContent = 0;
+  document.getElementById("stars").textContent = "";
+  [1,2,3].forEach(i => document.getElementById("lvl"+i).classList.remove("active"));
+  document.getElementById("lvl"+n).classList.add("active");
+  nextQuestion();
+}
+
+function nextQuestion() {
+  qAnswered = false;
+  document.getElementById("quiz-feedback").textContent = "";
+  document.getElementById("quiz-feedback").className = "quiz-feedback";
+  document.getElementById("next-btn").classList.remove("show");
+
+  const pool = shuffle(getTimePool());
+  qCurrent = pool[0];
+  const correct = getDanishTime(qCurrent.h, qCurrent.m).main;
+
+  // Update quiz clock
+  updateHands(document.getElementById("qhour-hand"), document.getElementById("qmin-hand"), qCurrent.h, qCurrent.m);
+
+  // Generate wrong options
+  const wrongPool = shuffle(getTimePool().filter(t => {
+    const d = getDanishTime(t.h, t.m).main;
+    return d !== correct;
+  })).slice(0, 3);
+
+  const options = shuffle([correct, ...wrongPool.map(t => getDanishTime(t.h, t.m).main)]);
+
+  const container = document.getElementById("quiz-options");
+  container.innerHTML = "";
+  options.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.className = "quiz-opt";
+    btn.textContent = opt;
+    btn.onclick = () => answer(btn, opt, correct);
+    container.appendChild(btn);
+  });
+
+  const h12 = qCurrent.h % 12 || 12;
+  const qDigital = String(qCurrent.h).padStart(2,'0') + ':' + String(qCurrent.m).padStart(2,'0');
+  document.getElementById("quiz-prompt").innerHTML = `<span style="font-size:13px;color:var(--text-muted);font-weight:400">Digital tid: </span><span style="color:var(--accent);font-size:18px;font-weight:800">${qDigital}</span><br>Hvad viser uret?`;
+}
+
+function answer(btn, chosen, correct) {
+  if (qAnswered) return;
+  qAnswered = true;
+
+  const allCorrect = getAllDanishTimes(qCurrent.h, qCurrent.m);
+  const isCorrect = allCorrect.includes(chosen);
+
+  document.querySelectorAll(".quiz-opt").forEach(b => {
+    b.disabled = true;
+    if (allCorrect.includes(b.textContent)) b.classList.add("correct");
+  });
+
+  const fb = document.getElementById("quiz-feedback");
+  if (isCorrect) {
+    qCorrect++;
+    btn.classList.add("correct");
+    fb.textContent = "✓ Rigtigt!";
+    fb.className = "quiz-feedback correct";
+  } else {
+    qWrong++;
+    btn.classList.add("wrong");
+    fb.innerHTML = "✗ Det var " + allCorrect[0] + (allCorrect.length > 1 ? `<br><span style="font-size:13px">også: ${allCorrect.slice(1).join(', ')}</span>` : '');
+    fb.className = "quiz-feedback wrong";
+  }
+
+  document.getElementById("q-correct").textContent = qCorrect;
+  document.getElementById("q-wrong").textContent = qWrong;
+
+  // Stars
+  const total = qCorrect + qWrong;
+  const pct = total > 0 ? qCorrect / total : 0;
+  let stars = "";
+  if (total >= 3) {
+    if (pct >= 0.9) stars = "⭐⭐⭐";
+    else if (pct >= 0.7) stars = "⭐⭐";
+    else if (pct >= 0.5) stars = "⭐";
+  }
+  document.getElementById("stars").textContent = stars;
+
+  document.getElementById("next-btn").classList.add("show");
+}
+
+// Tab switching
+function switchTab(id) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  document.getElementById("panel-" + id).classList.add("active");
+  event.target.classList.add("active");
+  if (id === "quiz") nextQuestion();
+}
+
+nextQuestion();
+
+drawLaerClock();
+laerUpdate();
+// Init SVG colors
+setTimeout(updateSVGColors, 50);
+</script>
+</body>
+</html>
